@@ -2,7 +2,7 @@ use std::ffi::c_void;
 use thiserror::Error;
 use windows::Win32::{
     Foundation::{CloseHandle, HANDLE},
-    System::Diagnostics::Debug::ReadProcessMemory,
+    System::Diagnostics::Debug::{ReadProcessMemory, WriteProcessMemory},
 };
 use winproc::{ModuleEntry, Process};
 
@@ -33,8 +33,10 @@ pub enum WindowsError {
     InvalidProcessName(String),
     #[error("Handle to process is invalid")]
     InvalidHandle,
-    #[error("Failed to read memory at address {0:X}")]
-    ReadMemoryError(usize),
+    #[error("Failed to read {0} bytes from memory at address {1:X}")]
+    ReadMemoryError(usize, usize),
+    #[error("Failed to write {0} bytes to memory at address {1:X}")]
+    WriteMemoryError(usize, usize),
     #[error("Process has no modules loaded")]
     NoModules,
 }
@@ -86,6 +88,8 @@ pub fn read_process_memory(
         return Ok(());
     }
 
+    let num_bytes_to_read = buffer.len();
+
     let mut num_bytes_read: usize = 0;
     let buffer_ptr = buffer.as_mut_ptr() as *mut c_void;
     if unsafe {
@@ -93,16 +97,53 @@ pub fn read_process_memory(
             handle,
             address as *mut c_void,
             buffer_ptr,
-            buffer.len(),
+            num_bytes_to_read,
             &mut num_bytes_read,
         )
     } == BOOL(1)
-        && buffer.len() == num_bytes_read
+        && num_bytes_to_read == num_bytes_read
     {
         return Ok(());
     }
 
-    Err(WindowsError::ReadMemoryError(buffer_ptr as usize))
+    Err(WindowsError::ReadMemoryError(
+        num_bytes_to_read,
+        buffer_ptr as usize,
+    ))
+}
+
+pub fn write_process_memory(
+    handle: HANDLE,
+    address: usize,
+    bytes: usize,
+    num_bytes_to_write: usize,
+) -> Result<(), WindowsError> {
+    use windows::Win32::Foundation::BOOL;
+
+    if handle.is_invalid() {
+        return Err(WindowsError::InvalidHandle);
+    }
+
+    let mut num_bytes_written: usize = 0;
+    let bytes_ptr = bytes as *const c_void;
+    if unsafe {
+        WriteProcessMemory(
+            handle,
+            address as *mut c_void,
+            bytes_ptr,
+            num_bytes_to_write,
+            &mut num_bytes_written,
+        )
+    } == BOOL(1)
+        && num_bytes_to_write == num_bytes_written
+    {
+        return Ok(());
+    }
+
+    Err(WindowsError::ReadMemoryError(
+        num_bytes_to_write,
+        bytes_ptr as usize,
+    ))
 }
 
 impl WindowsRemoteMemory {
@@ -126,5 +167,14 @@ impl WindowsRemoteMemory {
 
     pub fn read_bytes(&self, address: usize, buffer: &mut [u8]) -> Result<(), WindowsError> {
         read_process_memory(self.handle, address, buffer)
+    }
+
+    pub fn write_ptr(
+        &self,
+        address: usize,
+        ptr: usize,
+        num_bytes_to_write: usize,
+    ) -> Result<(), WindowsError> {
+        write_process_memory(self.handle, address, ptr, num_bytes_to_write)
     }
 }

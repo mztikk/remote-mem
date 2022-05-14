@@ -46,6 +46,17 @@ impl RemoteMemory {
         Ok(self.windows_remote_memory.read_bytes(address, buffer)?)
     }
 
+    pub fn write_ptr(
+        &self,
+        address: usize,
+        ptr: usize,
+        num_bytes_to_write: usize,
+    ) -> Result<(), RemoteMemoryError> {
+        Ok(self
+            .windows_remote_memory
+            .write_ptr(address, ptr, num_bytes_to_write)?)
+    }
+
     pub fn get_base_address(&self) -> usize {
         self.windows_remote_memory.base_module.mod_base_addr as usize
     }
@@ -61,6 +72,19 @@ impl RemoteMemory {
         let mut buffer: Vec<u8> = vec![0; size];
         self.read_bytes(address, &mut buffer)?;
         Ok(unsafe { (buffer.as_ptr() as *const T).read_unaligned() })
+    }
+
+    pub fn write_bytes(&self, address: usize, buffer: &[u8]) -> Result<(), RemoteMemoryError> {
+        self.write_ptr(address, buffer.as_ptr() as usize, buffer.len())
+    }
+
+    pub fn write<T: Sized + Copy>(
+        &self,
+        address: usize,
+        value: T,
+    ) -> Result<(), RemoteMemoryError> {
+        let size = std::mem::size_of::<T>();
+        self.write_ptr(address, std::ptr::addr_of!(value) as usize, size)
     }
 
     pub fn find_signature(&self, signature: &Signature) -> Option<usize> {
@@ -101,5 +125,33 @@ mod test {
         assert!(read_value.is_ok());
         let read_value = read_value.unwrap();
         assert_eq!(read_value, value);
+    }
+
+    #[test]
+    fn test_write_bytes() {
+        let data = vec![0xFF, 0x00, 0x12, 0xCD];
+        let buffer = vec![0; 4];
+        let buffer_ptr = buffer.as_ptr() as usize;
+        let process_id = std::process::id();
+        let remote_memory = super::RemoteMemory::new(process_id);
+        assert!(remote_memory.is_ok());
+        let remote_memory = remote_memory.unwrap();
+        assert_ne!(data, buffer);
+        assert!(remote_memory.write_bytes(buffer_ptr, &data).is_ok());
+        assert_eq!(data, buffer);
+    }
+
+    #[test]
+    fn test_write_u32() {
+        let data: usize = 12345;
+        let buffer: usize = 0;
+        let buffer_ptr = std::ptr::addr_of!(buffer) as usize;
+        let process_id = std::process::id();
+        let remote_memory = super::RemoteMemory::new(process_id);
+        assert!(remote_memory.is_ok());
+        let remote_memory = remote_memory.unwrap();
+        assert_ne!(data, buffer);
+        assert!(remote_memory.write::<usize>(buffer_ptr, data).is_ok());
+        assert_eq!(data, buffer);
     }
 }
