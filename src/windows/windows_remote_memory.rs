@@ -6,7 +6,6 @@ use windows::Win32::{
 };
 use winproc::{ModuleEntry, Process};
 
-#[cfg(target_family = "windows")]
 pub struct WindowsRemoteMemory {
     pub process: Process,
     pub process_id: u32,
@@ -106,7 +105,6 @@ pub fn read_process_memory(
     Err(WindowsError::ReadMemoryError(buffer_ptr as usize))
 }
 
-#[cfg(target_os = "windows")]
 impl WindowsRemoteMemory {
     pub fn new(process_id: u32) -> Result<WindowsRemoteMemory, WindowsError> {
         use windows::Win32::System::Threading::{OpenProcess, PROCESS_ACCESS_RIGHTS};

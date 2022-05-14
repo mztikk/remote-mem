@@ -2,6 +2,7 @@ use crate::windows::windows_remote_memory::{self, WindowsRemoteMemory};
 use robs::{scanner, signature::Signature};
 use thiserror::Error;
 
+#[cfg(target_family = "windows")]
 pub mod windows;
 
 pub struct RemoteMemory {
@@ -11,12 +12,14 @@ pub struct RemoteMemory {
 
 #[derive(Debug, Error)]
 pub enum RemoteMemoryError {
+    #[cfg(target_family = "windows")]
     #[error("{0}")]
     WindowsError(windows_remote_memory::WindowsError),
     #[error("'{0}' OS is not supported")]
     OsNotSupported(String),
 }
 
+#[cfg(target_family = "windows")]
 impl From<windows_remote_memory::WindowsError> for RemoteMemoryError {
     fn from(e: windows_remote_memory::WindowsError) -> Self {
         RemoteMemoryError::WindowsError(e)
