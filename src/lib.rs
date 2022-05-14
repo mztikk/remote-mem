@@ -1,17 +1,20 @@
+use crate::windows::windows_remote_memory::{self, WindowsRemoteMemory};
 use robs::{scanner, signature::Signature};
-use windows_remote_memory::WindowsRemoteMemory;
+use thiserror::Error;
 
-mod windows_remote_memory;
+pub mod windows;
 
 pub struct RemoteMemory {
     #[cfg(target_family = "windows")]
     windows_remote_memory: WindowsRemoteMemory,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum RemoteMemoryError {
+    #[error("{0}")]
     WindowsError(windows_remote_memory::WindowsError),
-    OsNotSupported,
+    #[error("'{0}' OS is not supported")]
+    OsNotSupported(String),
 }
 
 impl From<windows_remote_memory::WindowsError> for RemoteMemoryError {
@@ -27,7 +30,9 @@ impl RemoteMemory {
                 windows_remote_memory: WindowsRemoteMemory::new(process_id)?,
             })
         } else {
-            Err(RemoteMemoryError::OsNotSupported)
+            Err(RemoteMemoryError::OsNotSupported(
+                std::env::consts::OS.to_string(),
+            ))
         }
     }
 
@@ -37,7 +42,9 @@ impl RemoteMemory {
                 windows_remote_memory: WindowsRemoteMemory::new_by_name(process_name)?,
             })
         } else {
-            Err(RemoteMemoryError::OsNotSupported)
+            Err(RemoteMemoryError::OsNotSupported(
+                std::env::consts::OS.to_string(),
+            ))
         }
     }
 
@@ -45,7 +52,9 @@ impl RemoteMemory {
         if cfg!(target_family = "windows") {
             Ok(self.windows_remote_memory.read_bytes(address, buffer)?)
         } else {
-            Err(RemoteMemoryError::OsNotSupported)
+            Err(RemoteMemoryError::OsNotSupported(
+                std::env::consts::OS.to_string(),
+            ))
         }
     }
 
