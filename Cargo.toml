@@ -5,6 +5,7 @@ authors = ["Nils Feierabend <mztikk@outlook.de>"]
 edition = "2021"
 license = "MIT"
 description = "Remote memory access library"
+repository = "https://www.github.com/mztikk/remote-mem"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
