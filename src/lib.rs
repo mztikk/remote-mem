@@ -104,6 +104,11 @@ impl RemoteMemory {
         self.find_signature_in(signature, base_address, base_size)
             .map(|address| address + base_address)
     }
+
+    pub fn make_absolute(&self, address: usize) -> usize {
+        let base_address = self.get_base_address();
+        address + base_address
+    }
 }
 
 #[cfg(test)]
