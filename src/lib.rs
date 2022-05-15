@@ -87,12 +87,22 @@ impl RemoteMemory {
         self.write_ptr(address, std::ptr::addr_of!(value) as usize, size)
     }
 
+    pub fn find_signature_in(
+        &self,
+        signature: &Signature,
+        start_address: usize,
+        size: usize,
+    ) -> Option<usize> {
+        let mut buffer = vec![0; size];
+        self.read_bytes(start_address, &mut buffer).ok()?;
+        scanner::find_signature(&buffer, signature)
+    }
+
     pub fn find_signature(&self, signature: &Signature) -> Option<usize> {
         let base_address = self.get_base_address();
         let base_size = self.get_base_size();
-        let mut buffer = vec![0; base_size];
-        self.read_bytes(base_address, &mut buffer).ok()?;
-        scanner::find_signature(&buffer, signature)
+        self.find_signature_in(signature, base_address, base_size)
+            .map(|address| address + base_address)
     }
 }
 
