@@ -88,7 +88,8 @@ pub fn read_process_memory(
 
     let num_bytes_to_read = buffer.len();
 
-    let num_bytes_read: Option<*mut usize> = None;
+    let mut num_bytes_read: usize = 0;
+    let num_bytes_read: Option<*mut usize> = Some(&mut num_bytes_read);
     let buffer_ptr = buffer.as_mut_ptr() as *mut c_void;
     match unsafe {
         ReadProcessMemory(
@@ -117,7 +118,8 @@ pub fn write_process_memory(
         return Err(WindowsError::InvalidHandle);
     }
 
-    let num_bytes_written: Option<*mut usize> = None;
+    let mut num_bytes_written: usize = 0;
+    let num_bytes_written: Option<*mut usize> = Some(&mut num_bytes_written);
     let bytes_ptr = bytes as *const c_void;
 
     match unsafe {
