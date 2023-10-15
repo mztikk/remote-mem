@@ -10,16 +10,15 @@ repository = "https://www.github.com/mztikk/remote-mem"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-thiserror = "1.0.31"
+thiserror = "1.0.49"
 robs = "0.2.1"
 
 [target.'cfg(windows)'.dependencies]
 winproc = "0.6.4"
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.36.1"
+version = "0.51.1"
 features = [
-    "alloc",
     "Data_Xml_Dom",
     "Win32_Foundation",
     "Win32_Security",

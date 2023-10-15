@@ -78,8 +78,6 @@ pub fn read_process_memory(
     address: usize,
     buffer: &mut [u8],
 ) -> Result<(), WindowsError> {
-    use windows::Win32::Foundation::BOOL;
-
     if handle.is_invalid() {
         return Err(WindowsError::InvalidHandle);
     }
@@ -90,26 +88,23 @@ pub fn read_process_memory(
 
     let num_bytes_to_read = buffer.len();
 
-    let mut num_bytes_read: usize = 0;
+    let num_bytes_read: Option<*mut usize> = None;
     let buffer_ptr = buffer.as_mut_ptr() as *mut c_void;
-    if unsafe {
+    match unsafe {
         ReadProcessMemory(
             handle,
             address as *mut c_void,
             buffer_ptr,
             num_bytes_to_read,
-            &mut num_bytes_read,
+            num_bytes_read,
         )
-    } == BOOL(1)
-        && num_bytes_to_read == num_bytes_read
-    {
-        return Ok(());
+    } {
+        Ok(_) if num_bytes_read.is_some_and(|x| unsafe { *x == num_bytes_to_read }) => Ok(()),
+        _ => Err(WindowsError::ReadMemoryError(
+            num_bytes_to_read,
+            buffer_ptr as usize,
+        )),
     }
-
-    Err(WindowsError::ReadMemoryError(
-        num_bytes_to_read,
-        buffer_ptr as usize,
-    ))
 }
 
 pub fn write_process_memory(
@@ -118,32 +113,28 @@ pub fn write_process_memory(
     bytes: usize,
     num_bytes_to_write: usize,
 ) -> Result<(), WindowsError> {
-    use windows::Win32::Foundation::BOOL;
-
     if handle.is_invalid() {
         return Err(WindowsError::InvalidHandle);
     }
 
-    let mut num_bytes_written: usize = 0;
+    let num_bytes_written: Option<*mut usize> = None;
     let bytes_ptr = bytes as *const c_void;
-    if unsafe {
+
+    match unsafe {
         WriteProcessMemory(
             handle,
             address as *mut c_void,
             bytes_ptr,
             num_bytes_to_write,
-            &mut num_bytes_written,
+            num_bytes_written,
         )
-    } == BOOL(1)
-        && num_bytes_to_write == num_bytes_written
-    {
-        return Ok(());
+    } {
+        Ok(_) if num_bytes_written.is_some_and(|x| unsafe { *x == num_bytes_to_write }) => Ok(()),
+        _ => Err(WindowsError::ReadMemoryError(
+            num_bytes_to_write,
+            bytes_ptr as usize,
+        )),
     }
-
-    Err(WindowsError::ReadMemoryError(
-        num_bytes_to_write,
-        bytes_ptr as usize,
-    ))
 }
 
 impl WindowsRemoteMemory {

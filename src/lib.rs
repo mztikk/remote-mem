@@ -12,17 +12,10 @@ pub struct RemoteMemory {
 #[derive(Debug, Error)]
 pub enum RemoteMemoryError {
     #[cfg(target_family = "windows")]
-    #[error("{0}")]
-    WindowsError(windows::windows_remote_memory::WindowsError),
+    #[error(transparent)]
+    WindowsError(#[from] windows::windows_remote_memory::WindowsError),
     #[error("'{0}' OS is not supported")]
     OsNotSupported(String),
-}
-
-#[cfg(target_family = "windows")]
-impl From<windows::windows_remote_memory::WindowsError> for RemoteMemoryError {
-    fn from(e: windows::windows_remote_memory::WindowsError) -> Self {
-        RemoteMemoryError::WindowsError(e)
-    }
 }
 
 #[cfg(target_family = "windows")]
@@ -63,6 +56,18 @@ impl RemoteMemory {
 
     pub fn get_base_size(&self) -> usize {
         self.windows_remote_memory.base_module.mod_base_size as usize
+    }
+
+    pub fn find_signature_all_modules(&self, signature: &Signature) -> Option<usize> {
+        self.windows_remote_memory
+            .process
+            .module_entries()
+            .unwrap()
+            .find_map(|module| {
+                let base_address = module.mod_base_addr as usize;
+                let size = module.mod_base_size as usize;
+                self.find_signature_in(signature, base_address, size)
+            })
     }
 }
 
